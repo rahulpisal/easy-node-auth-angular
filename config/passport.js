@@ -46,41 +46,55 @@ module.exports = function(passport) {
         passReqToCallback : true // allows us to pass back the entire request to the callback
     },
     function(req, email, password, done) {
+        if (email)
+            email = email.toLowerCase(); // Use lower-case e-mails to avoid case-sensitive e-mail matching
 
         // asynchronous
         // User.findOne wont fire unless data is sent back
         process.nextTick(function() {
+            // if the user is not already logged in:
+            if (!req.user) {
+                User.findOne({ 'local.email' :  email }, function(err, user) {
+                    // if there are any errors, return the error
+                    if (err)
+                        return done(err);
 
-	        // find a user whose email is the same as the forms email
-	        // we are checking to see if the user trying to login already exists
-	        User.findOne({ 'local.email' :  email }, function(err, user) {
-	            // if there are any errors, return the error
-	            if (err)
-	                return done(err);
+                    console.log(user);
+                    // check to see if theres already a user with that email
+                    if (user) {
+                        return done(null, { error: 'That email is already taken.' });
+                    } else {
 
-	            // check to see if theres already a user with that email
-	            if (user) {
-	                return done(null, false, req.flash('signupMessage', 'That email is already taken.'));
-	            } else {
+                        // create the user
+                        var newUser            = new User();
 
-	                // if there is no user with that email
-	                // create the user
-	                var newUser            = new User();
+                        newUser.local.email    = email;
+                        newUser.local.password = newUser.generateHash(password);
 
-	                // set the user's local credentials
-	                newUser.local.email    = email;
-	                newUser.local.password = newUser.generateHash(password);
+                        newUser.save(function(err) {
+                            if (err)
+                                throw err;
 
-	                // save the user
-	                newUser.save(function(err) {
-	                    if (err)
-	                        throw err;
-	                    return done(null, newUser);
-	                });
-	            }
+                            return done(null, newUser);
+                        });
+                    }
 
-	        });    
-
+                });
+            // if the user is logged in but has no local account...
+            } else if ( !req.user.local.email ) {
+                // ...presumably they're trying to connect a local account
+                var user            = req.user;
+                user.local.email    = email;
+                user.local.password = user.generateHash(password);
+                user.save(function(err) {
+                    if (err)
+                        throw err;
+                    return done(null, user);
+                });
+            } else {
+                // user is logged in and already has a local account. Ignore signup. (You should log out before trying to create a new account, user!)
+                return done(null, req.user);
+            }
         });
 
     }));
@@ -98,24 +112,29 @@ module.exports = function(passport) {
         passReqToCallback : true // allows us to pass back the entire request to the callback
     },
     function(req, email, password, done) { // callback with email and password from our form
+        if (email)
+            email = email.toLowerCase(); // Use lower-case e-mails to avoid case-sensitive e-mail matching
 
         // find a user whose email is the same as the forms email
         // we are checking to see if the user trying to login already exists
-        User.findOne({ 'local.email' :  email }, function(err, user) {
-            // if there are any errors, return the error before anything else
-            if (err)
-                return done(err);
+        // asynchronous
+        process.nextTick(function() {
+            User.findOne({ 'local.email' :  email }, function(err, user) {
+                // if there are any errors, return the error before anything else
+                if (err)
+                    return done(err);
 
-            // if no user is found, return the message
-            if (!user)
-                return done(null, false, req.flash('loginMessage', 'No user found.')); // req.flash is the way to set flashdata using connect-flash
+                // if no user is found, return the message
+                if (!user)
+                    return done(null, false, req.flash('loginMessage', 'No user found.')); // req.flash is the way to set flashdata using connect-flash
 
-            // if the user is found but the password is wrong
-            if (!user.validPassword(password))
-                return done(null, false, req.flash('loginMessage', 'Oops! Wrong password.')); // create the loginMessage and save it to session as flashdata
+                // if the user is found but the password is wrong
+                if (!user.validPassword(password))
+                    return done(null, false, req.flash('loginMessage', 'Oops! Wrong password.')); // create the loginMessage and save it to session as flashdata
 
-            // all is well, return successful user
-            return done(null, user);
+                // all is well, return successful user
+                return done(null, user);
+            });
         });
 
     }));
@@ -156,7 +175,7 @@ module.exports = function(passport) {
                         if (!user.facebook.token) {
                             user.facebook.token = token;
                             user.facebook.name  = profile.name.givenName + ' ' + profile.name.familyName;
-                            user.facebook.email = profile.emails[0].value;
+                            user.facebook.email = (profile.emails[0].value || '').toLowerCase();
 
                             user.save(function(err) {
                                 if (err)
@@ -175,7 +194,7 @@ module.exports = function(passport) {
                         newUser.facebook.token = token; // we will save the token that facebook provides to the user                    
                         newUser.facebook.name  = profile.name.givenName + ' ' + profile.name.familyName; // look at the passport user profile to see how names are returned
                         //newUser.facebook.name = profile.displayName;
-                        newUser.facebook.email = profile.emails[0].value; // facebook can return multiple emails so we'll take the first
+                        newUser.facebook.email = (profile.emails[0].value || '').toLowerCase(); // facebook can return multiple emails so we'll take the first
 
                         // save our user to the database
                         newUser.save(function(err) {
@@ -195,7 +214,7 @@ module.exports = function(passport) {
                 user.facebook.id    = profile.id;
                 user.facebook.token = token;
                 user.facebook.name  = profile.name.givenName + ' ' + profile.name.familyName;
-                user.facebook.email = profile.emails[0].value;
+                user.facebook.email = (profile.emails[0].value || '').toLowerCase();
 
                 // save the user
                 user.save(function(err) {
@@ -317,7 +336,7 @@ module.exports = function(passport) {
                         if (!user.google.token) {
                             user.google.token = token;
                             user.google.name  = profile.displayName;
-                            user.google.email = profile.emails[0].value; // pull the first email
+                            user.google.email = (profile.emails[0].value || '').toLowerCase(); // pull the first email
 
                             user.save(function(err) {
                                 if (err)
@@ -335,7 +354,7 @@ module.exports = function(passport) {
                         newUser.google.id    = profile.id;
                         newUser.google.token = token;
                         newUser.google.name  = profile.displayName;
-                        newUser.google.email = profile.emails[0].value; // pull the first email
+                        newUser.google.email = (profile.emails[0].value || '').toLowerCase(); // pull the first email
 
                         // save the user
                         newUser.save(function(err) {
@@ -352,7 +371,7 @@ module.exports = function(passport) {
                 user.google.id    = profile.id;
                 user.google.token = token;
                 user.google.name  = profile.displayName;
-                user.google.email = profile.emails[0].value; // pull the first email
+                user.google.email = (profile.emails[0].value || '').toLowerCase(); // pull the first email
 
                 user.save(function(err) {
                     if (err)

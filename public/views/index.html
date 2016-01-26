@@ -1,0 +1,31 @@
+<!-- views/index.ejs -->
+<!doctype html>
+<html ng-app="app">
+    <head>
+        <title>Node Authentication</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"> <!-- load bootstrap css -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css"> <!-- load fontawesome -->
+        <!--<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.9/angular.min.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.9/angular-route.min.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>-->
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.2.16/angular.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.2.16/angular-route.min.js"></script>
+
+        <script src="/factories/httpInterceptor.js"></script>
+        <script src="/directives/common.js"></script>
+        <script src="/controllers/profile.js"></script>
+        <script src="/controllers/login.js"></script>
+        <script src="/modules/growl.js"></script>
+        <script src="/modules/core.js"></script>
+        
+        <style>
+            body        { padding-top:80px; }
+        </style>
+    </head>
+    <body>
+        <div class="container" ng-view>
+
+        </div>
+    </body>
+</html>
